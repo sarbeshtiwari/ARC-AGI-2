@@ -1,0 +1,1774 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes"
+        />
+        <title>ARC Testing Interface</title>
+
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+        <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+        <script src="js/common.js"></script>
+        <script src="js/task_index_data.js"></script>
+        <script src="js/testing_interface.js"></script>
+
+        <link rel="stylesheet" type="text/css" href="css/common.css" />
+        <link
+            rel="stylesheet"
+            type="text/css"
+            href="css/testing_interface.css"
+        />
+
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" type="text/css" href="css/responsive.css" />
+
+        <style>
+            /* ══════════════════════════════════════════════════════════
+               ARC-AGI-2 — Task Card Browser Modal
+               ══════════════════════════════════════════════════════════ */
+
+            /* ── Overlay with grid pattern ─────────────────────────── */
+            #modal_bg {
+                background: #000;
+                backdrop-filter: none;
+                overflow-y: auto;
+                align-items: flex-start;
+                justify-content: center;
+                padding: 0;
+            }
+
+            #modal_bg::before {
+                content: "";
+                position: fixed;
+                inset: 0;
+                background-image:
+                    linear-gradient(
+                        rgba(255, 255, 255, 0.03) 1px,
+                        transparent 1px
+                    ),
+                    linear-gradient(
+                        90deg,
+                        rgba(255, 255, 255, 0.03) 1px,
+                        transparent 1px
+                    );
+                background-size: 40px 40px;
+                pointer-events: none;
+                z-index: 0;
+            }
+
+            /* ── Modal Container (full-page scroll) ───────────────── */
+            #modal {
+                background: transparent;
+                border: none;
+                border-radius: 0;
+                padding: 0;
+                width: 100%;
+                max-width: 960px;
+                box-shadow: none;
+                position: relative;
+                z-index: 1;
+                margin: 0 auto;
+                display: flex;
+                flex-direction: column;
+                text-align: left;
+            }
+
+            /* ── Header Section ────────────────────────────────────── */
+            .browser_header {
+                padding: 60px 32px 40px;
+                text-align: center;
+                position: relative;
+            }
+
+            .browser_label {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 11px;
+                font-weight: 600;
+                letter-spacing: 2px;
+                text-transform: uppercase;
+                color: #1e93ff;
+                margin-bottom: 16px;
+                display: block;
+            }
+
+            .browser_title {
+                font-family: "Inter", sans-serif;
+                font-size: 36px;
+                font-weight: 800;
+                color: #fff;
+                letter-spacing: -1px;
+                line-height: 1.15;
+                margin-bottom: 14px;
+            }
+
+            .browser_subtitle {
+                font-family: "Inter", sans-serif;
+                font-size: 15px;
+                color: #666;
+                line-height: 1.6;
+                max-width: 520px;
+                margin: 0 auto;
+            }
+
+            .browser_subtitle strong {
+                color: #999;
+            }
+
+            /* ── Divider line ──────────────────────────────────────── */
+            .browser_divider {
+                height: 1px;
+                background: linear-gradient(
+                    90deg,
+                    transparent,
+                    #222,
+                    transparent
+                );
+                margin: 0 32px;
+            }
+
+            /* ── Task Cards Grid ───────────────────────────────────── */
+            .task_cards_container {
+                padding: 40px 32px 60px;
+                display: flex;
+                flex-direction: column;
+                gap: 48px;
+            }
+
+            /* ── Individual Task Card ──────────────────────────────── */
+            .task_card {
+                display: grid;
+                grid-template-columns: 1fr 1.3fr;
+                gap: 0;
+                border: 1px solid #1a1a1a;
+                border-radius: 16px;
+                background: #0a0a0a;
+                overflow: hidden;
+                transition:
+                    border-color 0.3s ease,
+                    box-shadow 0.3s ease;
+                position: relative;
+            }
+
+            .task_card::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                border-radius: 16px;
+                background: linear-gradient(
+                    135deg,
+                    rgba(30, 147, 255, 0.03),
+                    transparent 60%
+                );
+                pointer-events: none;
+                z-index: 0;
+            }
+
+            .task_card:hover {
+                border-color: #2a2a2a;
+                box-shadow:
+                    0 0 40px rgba(30, 147, 255, 0.05),
+                    0 20px 60px rgba(0, 0, 0, 0.4);
+            }
+
+            /* ── Card Left: Info ───────────────────────────────────── */
+            .task_card_info {
+                padding: 36px 32px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                position: relative;
+                z-index: 1;
+                border-right: 1px solid #141414;
+            }
+
+            .task_card_label {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 10px;
+                font-weight: 600;
+                letter-spacing: 1.8px;
+                text-transform: uppercase;
+                color: #1e93ff;
+                margin-bottom: 12px;
+            }
+
+            .task_card_id {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 18px;
+                font-weight: 600;
+                color: #fff;
+                letter-spacing: -0.3px;
+                margin-bottom: 16px;
+                word-break: break-all;
+            }
+
+            .task_card_desc {
+                font-family: "Inter", sans-serif;
+                font-size: 14px;
+                color: #666;
+                line-height: 1.6;
+                margin-bottom: 10px;
+            }
+
+            .task_card_meta {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 11px;
+                color: #444;
+                margin-bottom: 24px;
+                display: flex;
+                gap: 16px;
+                flex-wrap: wrap;
+            }
+
+            .task_card_meta span {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+            }
+
+            .meta_dot {
+                display: inline-block;
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background: #333;
+            }
+
+            .task_card_btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 12px 28px;
+                font-family: "JetBrains Mono", monospace;
+                font-size: 11px;
+                font-weight: 600;
+                letter-spacing: 1.5px;
+                text-transform: uppercase;
+                color: #fff;
+                background: #1e93ff;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                align-self: flex-start;
+            }
+
+            .task_card_btn:hover {
+                background: #0b7fe6;
+                box-shadow: 0 4px 20px rgba(30, 147, 255, 0.3);
+                transform: translateY(-1px);
+            }
+
+            .task_card_btn:active {
+                background: #0a6ec7;
+                transform: translateY(0);
+                box-shadow: none;
+            }
+
+            /* ── Card Right: Preview Grids ─────────────────────────── */
+            .task_card_preview {
+                padding: 24px 28px;
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+                position: relative;
+                z-index: 1;
+                background: rgba(255, 255, 255, 0.01);
+                justify-content: center;
+            }
+
+            .preview_pair {
+                display: flex;
+                align-items: center;
+                gap: 0;
+                justify-content: center;
+            }
+
+            .preview_grid_wrap {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                flex: 1;
+                min-width: 0;
+            }
+
+            .preview_grid_label {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 9px;
+                font-weight: 500;
+                color: #444;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 6px;
+            }
+
+            .preview_canvas {
+                border-radius: 4px;
+                display: block;
+                image-rendering: pixelated;
+                image-rendering: crisp-edges;
+            }
+
+            .preview_arrow {
+                font-size: 18px;
+                color: #444;
+                padding: 0 12px;
+                flex-shrink: 0;
+                user-select: none;
+                margin-top: 14px;
+            }
+
+            .preview_test_output_placeholder {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #111;
+                border: 1px dashed #2a2a2a;
+                border-radius: 4px;
+                color: #333;
+                font-size: 24px;
+            }
+
+            /* ── Loading Spinner ────────────────────────────────────── */
+            .task_card_loading {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 60px 20px;
+                color: #333;
+                font-family: "Inter", sans-serif;
+                font-size: 13px;
+                gap: 10px;
+            }
+
+            .spinner {
+                width: 18px;
+                height: 18px;
+                border: 2px solid #222;
+                border-top-color: #1e93ff;
+                border-radius: 50%;
+                animation: spin 0.8s linear infinite;
+            }
+
+            @keyframes spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+
+            /* ── Footer ────────────────────────────────────────────── */
+            .browser_footer {
+                text-align: center;
+                padding: 0 32px 48px;
+            }
+
+            .browser_footer_text {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 11px;
+                color: #333;
+                letter-spacing: 0.5px;
+            }
+
+            /* ── Upload Custom Button (top bar) ────────────────────── */
+            .btn-upload-custom {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                cursor: pointer;
+                user-select: none;
+            }
+
+            .btn-upload-custom svg {
+                opacity: 0.6;
+                transition: opacity 0.15s ease;
+            }
+            .btn-upload-custom:hover svg {
+                opacity: 1;
+            }
+
+            /* ── Upload Button (modal hero) ────────────────────────── */
+            .browser_header_actions {
+                margin-top: 24px;
+                display: flex;
+                justify-content: center;
+            }
+
+            .btn-upload-hero {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 11px 24px;
+                font-family: "Inter", sans-serif;
+                font-size: 13px;
+                font-weight: 500;
+                color: #aaa;
+                background: #111;
+                border: 1px dashed #333;
+                border-radius: 10px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                user-select: none;
+            }
+
+            .btn-upload-hero svg {
+                opacity: 0.5;
+                transition: opacity 0.2s ease;
+            }
+
+            .btn-upload-hero:hover {
+                color: #fff;
+                border-color: #1e93ff;
+                background: rgba(30, 147, 255, 0.06);
+                box-shadow: 0 0 20px rgba(30, 147, 255, 0.08);
+            }
+            .btn-upload-hero:hover svg {
+                opacity: 1;
+                stroke: #1e93ff;
+            }
+
+            .btn-upload-hero:active {
+                transform: scale(0.97);
+            }
+
+            /* ── Validation Toast ───────────────────────────────────── */
+            #validation_toast {
+                position: fixed;
+                top: 60px;
+                left: 50%;
+                transform: translateX(-50%) translateY(-20px);
+                z-index: 99999;
+                background: #1a1a1a;
+                border: 1px solid #f93c31;
+                border-radius: 12px;
+                padding: 16px 24px;
+                max-width: 480px;
+                width: 90vw;
+                box-shadow:
+                    0 8px 40px rgba(249, 60, 49, 0.15),
+                    0 0 0 1px rgba(249, 60, 49, 0.1);
+                opacity: 0;
+                pointer-events: none;
+                transition:
+                    opacity 0.25s ease,
+                    transform 0.25s ease;
+                display: flex;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            #validation_toast.show {
+                opacity: 1;
+                pointer-events: auto;
+                transform: translateX(-50%) translateY(0);
+            }
+
+            #validation_toast.toast_success {
+                border-color: #4fdc4a;
+                box-shadow:
+                    0 8px 40px rgba(79, 220, 74, 0.12),
+                    0 0 0 1px rgba(79, 220, 74, 0.1);
+            }
+
+            .toast_icon {
+                flex-shrink: 0;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 11px;
+                font-weight: 700;
+                margin-top: 1px;
+            }
+            .toast_icon_error {
+                background: rgba(249, 60, 49, 0.15);
+                color: #f93c31;
+            }
+            .toast_icon_success {
+                background: rgba(79, 220, 74, 0.15);
+                color: #4fdc4a;
+            }
+
+            .toast_content {
+                flex: 1;
+                min-width: 0;
+            }
+
+            .toast_title {
+                font-family: "Inter", sans-serif;
+                font-size: 13px;
+                font-weight: 600;
+                color: #fff;
+                margin-bottom: 4px;
+            }
+
+            .toast_message {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 11px;
+                color: #888;
+                line-height: 1.5;
+                word-break: break-word;
+            }
+
+            .toast_close {
+                flex-shrink: 0;
+                background: none;
+                border: none;
+                color: #555;
+                font-size: 18px;
+                cursor: pointer;
+                padding: 0 2px;
+                line-height: 1;
+                transition: color 0.15s ease;
+            }
+            .toast_close:hover {
+                color: #fff;
+            }
+
+            /* ── Responsive ────────────────────────────────────────── */
+            @media (max-width: 800px) {
+                .task_card {
+                    grid-template-columns: 1fr;
+                }
+                .task_card_info {
+                    border-right: none;
+                    border-bottom: 1px solid #141414;
+                    padding: 28px 24px;
+                }
+                .task_card_preview {
+                    padding: 20px 24px;
+                }
+                .browser_header {
+                    padding: 40px 20px 30px;
+                }
+                .btn-upload-hero {
+                    font-size: 12px;
+                    padding: 10px 20px;
+                }
+                .browser_title {
+                    font-size: 28px;
+                }
+                .browser_subtitle {
+                    font-size: 14px;
+                }
+                .task_cards_container {
+                    padding: 30px 20px 50px;
+                    gap: 36px;
+                }
+            }
+
+            @media (max-width: 520px) {
+                .browser_header {
+                    padding: 30px 16px 24px;
+                }
+                .btn-upload-hero {
+                    font-size: 11px;
+                    padding: 9px 16px;
+                    gap: 6px;
+                }
+                .btn-upload-hero svg {
+                    width: 14px;
+                    height: 14px;
+                }
+                #validation_toast {
+                    max-width: 96vw;
+                    padding: 12px 16px;
+                }
+                .toast_title {
+                    font-size: 12px;
+                }
+                .toast_message {
+                    font-size: 10px;
+                }
+                .browser_title {
+                    font-size: 22px;
+                }
+                .browser_subtitle {
+                    font-size: 13px;
+                }
+                .browser_label {
+                    font-size: 10px;
+                }
+                .task_cards_container {
+                    padding: 24px 16px 40px;
+                    gap: 28px;
+                }
+                .task_card_info {
+                    padding: 22px 18px;
+                }
+                .task_card_id {
+                    font-size: 15px;
+                }
+                .task_card_desc {
+                    font-size: 13px;
+                }
+                .task_card_btn {
+                    padding: 10px 22px;
+                    font-size: 10px;
+                    width: 100%;
+                    justify-content: center;
+                }
+                .task_card_preview {
+                    padding: 16px;
+                    gap: 12px;
+                }
+                .preview_arrow {
+                    font-size: 14px;
+                    padding: 0 6px;
+                }
+                .preview_grid_label {
+                    font-size: 8px;
+                }
+                .task_card_meta {
+                    font-size: 10px;
+                    gap: 10px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <!-- ── Modal (ARC-AGI-2 Task Browser) ────────────────────── -->
+        <div id="modal_bg">
+            <div id="modal">
+                <!-- Header -->
+                <div class="browser_header">
+                    <span class="browser_label">ARC-AGI-2 Testing</span>
+                    <h1 class="browser_title">Choose a Puzzle</h1>
+                    <p class="browser_subtitle">
+                        Given the examples, identify the pattern, then solve the
+                        test puzzle. Select a task below to begin.
+                    </p>
+                    <div class="browser_header_actions">
+                        <label
+                            class="btn-upload-hero"
+                            for="custom_file_input_modal"
+                        >
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <path
+                                    d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"
+                                />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                            Upload your own task file
+                        </label>
+                        <input
+                            type="file"
+                            id="custom_file_input_modal"
+                            accept=".json"
+                            style="display: none"
+                        />
+                    </div>
+                </div>
+
+                <div class="browser_divider"></div>
+
+                <!-- Task Cards rendered by JS -->
+                <div class="task_cards_container" id="task_cards_container">
+                    <!-- Cards will be injected here -->
+                    <div class="task_card_loading" id="cards_loading">
+                        <div class="spinner"></div>
+                        <span>Loading tasks...</span>
+                    </div>
+                </div>
+
+                <div class="browser_footer">
+                    <span class="browser_footer_text"
+                        >Supports ARC-AGI task format &middot; my_tasks &middot;
+                        or upload your own .json</span
+                    >
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Top Bar ───────────────────────────────────────────── -->
+        <div id="top_bar">
+            <div id="top_bar_left">
+                <span id="task_name" class="puzzle_id">Puzzle ID: —</span>
+            </div>
+            <div id="top_bar_right">
+                <button
+                    class="btn btn-outline"
+                    id="top_load_btn"
+                    onclick="openTaskBrowser()"
+                >
+                    Choose task
+                </button>
+                <label
+                    class="btn btn-outline btn-upload-custom"
+                    for="custom_file_input"
+                >
+                    <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    Upload Custom
+                </label>
+                <input
+                    type="file"
+                    id="custom_file_input"
+                    accept=".json"
+                    style="display: none"
+                />
+            </div>
+        </div>
+
+        <!-- ── Main Workspace ────────────────────────────────────── -->
+        <div id="workspace">
+            <!-- ── LEFT: Examples Panel ──────────────────────────── -->
+            <div id="examples_panel">
+                <div class="section_header">EXAMPLES</div>
+                <div id="task_preview"></div>
+            </div>
+
+            <!-- ── RIGHT: Test Panel ─────────────────────────────── -->
+            <div id="test_panel">
+                <div class="section_header">TEST</div>
+
+                <!-- Test grids row -->
+                <div id="test_grids_container">
+                    <div id="test_input_wrapper">
+                        <div class="grid_label">
+                            Input
+                            <span class="grid_dims" id="test_input_dims"></span>
+                        </div>
+                        <div
+                            id="evaluation_input"
+                            class="selectable_grid grid_display"
+                        ></div>
+                    </div>
+
+                    <div class="arrow_separator" id="test_arrow">&rarr;</div>
+
+                    <div id="test_output_wrapper">
+                        <div class="grid_label">
+                            Output
+                            <span class="grid_dims" id="test_output_dims"
+                                >(3x3)</span
+                            >
+                        </div>
+                        <div id="output_grid">
+                            <div
+                                class="edition_grid selectable_grid grid_display"
+                            >
+                                <div class="row">
+                                    <div
+                                        class="cell"
+                                        symbol="0"
+                                        x="0"
+                                        y="0"
+                                    ></div>
+                                    <div
+                                        class="cell"
+                                        symbol="0"
+                                        x="0"
+                                        y="1"
+                                    ></div>
+                                    <div
+                                        class="cell"
+                                        symbol="0"
+                                        x="0"
+                                        y="2"
+                                    ></div>
+                                </div>
+                                <div class="row">
+                                    <div
+                                        class="cell"
+                                        symbol="0"
+                                        x="1"
+                                        y="0"
+                                    ></div>
+                                    <div
+                                        class="cell"
+                                        symbol="0"
+                                        x="1"
+                                        y="1"
+                                    ></div>
+                                    <div
+                                        class="cell"
+                                        symbol="0"
+                                        x="1"
+                                        y="2"
+                                    ></div>
+                                </div>
+                                <div class="row">
+                                    <div
+                                        class="cell"
+                                        symbol="0"
+                                        x="2"
+                                        y="0"
+                                    ></div>
+                                    <div
+                                        class="cell"
+                                        symbol="0"
+                                        x="2"
+                                        y="1"
+                                    ></div>
+                                    <div
+                                        class="cell"
+                                        symbol="0"
+                                        x="2"
+                                        y="2"
+                                    ></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test input navigation -->
+                <div id="test_navigation">
+                    <button onclick="prevTestInput()" class="btn btn-dark">
+                        Previous
+                    </button>
+                    <span class="test_counter"
+                        >Test
+                        <span id="current_test_input_id_display">1</span> of
+                        <span id="total_test_input_count_display">1</span></span
+                    >
+                    <button onclick="nextTestInput()" class="btn btn-dark">
+                        Next
+                    </button>
+                </div>
+
+                <!-- Controls Section -->
+                <div id="controls_panel">
+                    <!-- Step 1: Configure grid -->
+                    <div class="control_section">
+                        <div class="step_label">
+                            1. Configure your output grid:
+                        </div>
+                        <div class="control_row">
+                            <div class="control_group_left">
+                                <input
+                                    type="text"
+                                    id="output_grid_size"
+                                    class="grid_size_field"
+                                    name="size"
+                                    value="3x3"
+                                />
+                                <button
+                                    onclick="resizeOutputGrid()"
+                                    id="resize_btn"
+                                    class="btn btn-dark"
+                                >
+                                    Resize
+                                </button>
+                            </div>
+                            <div class="control_group_right">
+                                <button
+                                    onclick="copyFromInput()"
+                                    class="btn btn-dark"
+                                >
+                                    <code>Copy from input</code>
+                                </button>
+                                <button
+                                    onclick="resetOutputGrid()"
+                                    class="btn btn-dark"
+                                >
+                                    Clear
+                                </button>
+                                <button
+                                    onclick="resetOutputGrid()"
+                                    class="btn btn-dark"
+                                >
+                                    Reset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Edit cells -->
+                    <div class="control_section">
+                        <div class="step_label">
+                            2. Edit your output grid cells:
+                        </div>
+                        <div id="toolbar">
+                            <label
+                                class="tool_btn active_tool"
+                                id="tool_edit_label"
+                            >
+                                <input
+                                    type="radio"
+                                    id="tool_edit"
+                                    name="tool_switching"
+                                    value="edit"
+                                    checked
+                                />
+                                <span class="tool_icon">&#9999;&#65039;</span>
+                                Edit
+                            </label>
+                            <label class="tool_btn" id="tool_select_label">
+                                <input
+                                    type="radio"
+                                    id="tool_select"
+                                    name="tool_switching"
+                                    value="select"
+                                />
+                                <span class="tool_icon">&#9744;</span> Select
+                            </label>
+                            <label class="tool_btn" id="tool_floodfill_label">
+                                <input
+                                    type="radio"
+                                    id="tool_floodfill"
+                                    name="tool_switching"
+                                    value="floodfill"
+                                />
+                                <span class="tool_icon">&#129473;</span> Fill
+                            </label>
+                        </div>
+
+                        <div id="symbol_picker">
+                            <div
+                                class="symbol_preview symbol_0 selected-symbol-preview"
+                                symbol="0"
+                            ></div>
+                            <div
+                                class="symbol_preview symbol_1"
+                                symbol="1"
+                            ></div>
+                            <div
+                                class="symbol_preview symbol_2"
+                                symbol="2"
+                            ></div>
+                            <div
+                                class="symbol_preview symbol_3"
+                                symbol="3"
+                            ></div>
+                            <div
+                                class="symbol_preview symbol_4"
+                                symbol="4"
+                            ></div>
+                            <div
+                                class="symbol_preview symbol_5"
+                                symbol="5"
+                            ></div>
+                            <div
+                                class="symbol_preview symbol_6"
+                                symbol="6"
+                            ></div>
+                            <div
+                                class="symbol_preview symbol_7"
+                                symbol="7"
+                            ></div>
+                            <div
+                                class="symbol_preview symbol_8"
+                                symbol="8"
+                            ></div>
+                            <div
+                                class="symbol_preview symbol_9"
+                                symbol="9"
+                            ></div>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Submit -->
+                    <div class="control_section">
+                        <div class="step_label">
+                            3. See if your output is correct:
+                        </div>
+                        <div class="submit_row">
+                            <button
+                                onclick="submitSolution()"
+                                id="submit_solution_btn"
+                                class="btn btn-submit"
+                            >
+                                <code>Submit solution</code>
+                            </button>
+                            <span id="error_display"></span>
+                            <span id="info_display"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <label for="show_symbol_numbers" style="display: none">
+            <input
+                type="checkbox"
+                id="show_symbol_numbers"
+                name="show_symbol_numbers"
+                onchange="changeSymbolVisibility()"
+            />
+        </label>
+
+        <!-- Validation Toast (outside modal so it's always visible) -->
+        <div id="validation_toast">
+            <div class="toast_icon toast_icon_error" id="toast_icon">
+                &#10005;
+            </div>
+            <div class="toast_content">
+                <div class="toast_title" id="toast_title">Invalid file</div>
+                <div class="toast_message" id="toast_message">—</div>
+            </div>
+            <button class="toast_close" onclick="hideToast()">&times;</button>
+        </div>
+
+        <script>
+            // ══════════════════════════════════════════════════════════
+            // Validation Toast
+            // ══════════════════════════════════════════════════════════
+
+            var _toastTimer = null;
+
+            function showToast(title, message, isSuccess) {
+                var toast = document.getElementById("validation_toast");
+                var icon = document.getElementById("toast_icon");
+                var titleEl = document.getElementById("toast_title");
+                var msgEl = document.getElementById("toast_message");
+
+                titleEl.textContent = title;
+                msgEl.textContent = message;
+
+                toast.classList.remove("toast_success");
+                icon.classList.remove("toast_icon_error", "toast_icon_success");
+
+                if (isSuccess) {
+                    toast.classList.add("toast_success");
+                    icon.classList.add("toast_icon_success");
+                    icon.innerHTML = "&#10003;";
+                    toast.style.borderColor = "#4fdc4a";
+                } else {
+                    icon.classList.add("toast_icon_error");
+                    icon.innerHTML = "&#10005;";
+                    toast.style.borderColor = "#f93c31";
+                }
+
+                toast.classList.add("show");
+
+                if (_toastTimer) clearTimeout(_toastTimer);
+                _toastTimer = setTimeout(
+                    function () {
+                        hideToast();
+                    },
+                    isSuccess ? 3000 : 6000,
+                );
+            }
+
+            function hideToast() {
+                var toast = document.getElementById("validation_toast");
+                toast.classList.remove("show");
+                if (_toastTimer) {
+                    clearTimeout(_toastTimer);
+                    _toastTimer = null;
+                }
+            }
+
+            // ══════════════════════════════════════════════════════════
+            // Custom File Upload with Validation
+            // ══════════════════════════════════════════════════════════
+
+            function validateAndLoadFile(file) {
+                // 1. Check file exists
+                if (!file) {
+                    showToast(
+                        "No file selected",
+                        "Please choose a file to upload.",
+                        false,
+                    );
+                    return;
+                }
+
+                // 2. Check file extension
+                var name = file.name || "";
+                if (!name.toLowerCase().endsWith(".json")) {
+                    showToast(
+                        "Invalid file type",
+                        "Expected a .json file but got: " +
+                            name.split(".").pop().toUpperCase() +
+                            ". Only .json task files are supported.",
+                        false,
+                    );
+                    return;
+                }
+
+                // 3. Check file size (max 5MB — sanity check)
+                if (file.size > 5 * 1024 * 1024) {
+                    showToast(
+                        "File too large",
+                        "Maximum file size is 5 MB. Your file is " +
+                            (file.size / (1024 * 1024)).toFixed(1) +
+                            " MB.",
+                        false,
+                    );
+                    return;
+                }
+
+                // 4. Read and parse
+                var reader = new FileReader();
+                reader.onerror = function () {
+                    showToast(
+                        "Read error",
+                        "Could not read the file. Please try again.",
+                        false,
+                    );
+                };
+                reader.onload = function (e) {
+                    var raw = e.target.result;
+
+                    // 4a. Parse JSON
+                    var contents;
+                    try {
+                        contents = JSON.parse(raw);
+                    } catch (err) {
+                        showToast(
+                            "Invalid JSON",
+                            "The file could not be parsed as JSON. " +
+                                (err.message || "Check the file syntax."),
+                            false,
+                        );
+                        return;
+                    }
+
+                    // 4b. Check top-level keys
+                    if (
+                        typeof contents !== "object" ||
+                        contents === null ||
+                        Array.isArray(contents)
+                    ) {
+                        showToast(
+                            "Invalid structure",
+                            'Expected a JSON object with "train" and "test" keys.',
+                            false,
+                        );
+                        return;
+                    }
+
+                    if (!contents.hasOwnProperty("train")) {
+                        showToast(
+                            'Missing "train" key',
+                            'The JSON must contain a "train" array with input/output pairs.',
+                            false,
+                        );
+                        return;
+                    }
+
+                    if (!contents.hasOwnProperty("test")) {
+                        showToast(
+                            'Missing "test" key',
+                            'The JSON must contain a "test" array with input/output pairs.',
+                            false,
+                        );
+                        return;
+                    }
+
+                    var train = contents.train;
+                    var test = contents.test;
+
+                    // 4c. Check arrays
+                    if (!Array.isArray(train) || train.length === 0) {
+                        showToast(
+                            'Invalid "train"',
+                            '"train" must be a non-empty array of {input, output} pairs.',
+                            false,
+                        );
+                        return;
+                    }
+
+                    if (!Array.isArray(test) || test.length === 0) {
+                        showToast(
+                            'Invalid "test"',
+                            '"test" must be a non-empty array of {input, output} pairs.',
+                            false,
+                        );
+                        return;
+                    }
+
+                    // 4d. Validate each train pair
+                    for (var i = 0; i < train.length; i++) {
+                        var err = validatePair(train[i], "train[" + i + "]");
+                        if (err) {
+                            showToast("Invalid train pair", err, false);
+                            return;
+                        }
+                    }
+
+                    // 4e. Validate each test pair
+                    for (var i = 0; i < test.length; i++) {
+                        var err = validatePair(test[i], "test[" + i + "]");
+                        if (err) {
+                            showToast("Invalid test pair", err, false);
+                            return;
+                        }
+                    }
+
+                    // 5. All good — load the task
+                    loadJSONTask(train, test);
+                    display_task_name(file.name, null, null);
+                    showToast(
+                        "Task loaded!",
+                        file.name +
+                            " — " +
+                            train.length +
+                            " train, " +
+                            test.length +
+                            " test pair(s).",
+                        true,
+                    );
+                };
+                reader.readAsText(file);
+            }
+
+            function validatePair(pair, label) {
+                if (
+                    typeof pair !== "object" ||
+                    pair === null ||
+                    Array.isArray(pair)
+                ) {
+                    return label + " is not a valid {input, output} object.";
+                }
+                if (!pair.hasOwnProperty("input")) {
+                    return label + ' is missing the "input" key.';
+                }
+                if (!pair.hasOwnProperty("output")) {
+                    return label + ' is missing the "output" key.';
+                }
+                var gridErr = validateGrid(pair.input, label + ".input");
+                if (gridErr) return gridErr;
+                gridErr = validateGrid(pair.output, label + ".output");
+                if (gridErr) return gridErr;
+                return null;
+            }
+
+            function validateGrid(grid, label) {
+                if (!Array.isArray(grid) || grid.length === 0) {
+                    return label + " must be a non-empty 2D array.";
+                }
+                if (grid.length > 30) {
+                    return label + " has " + grid.length + " rows (max 30).";
+                }
+                var firstLen = null;
+                for (var r = 0; r < grid.length; r++) {
+                    if (!Array.isArray(grid[r])) {
+                        return label + " row " + r + " is not an array.";
+                    }
+                    if (grid[r].length === 0 || grid[r].length > 30) {
+                        return (
+                            label +
+                            " row " +
+                            r +
+                            " has " +
+                            grid[r].length +
+                            " cols (must be 1-30)."
+                        );
+                    }
+                    if (firstLen === null) firstLen = grid[r].length;
+                    if (grid[r].length !== firstLen) {
+                        return (
+                            label +
+                            " rows have inconsistent widths (" +
+                            firstLen +
+                            " vs " +
+                            grid[r].length +
+                            ")."
+                        );
+                    }
+                    for (var c = 0; c < grid[r].length; c++) {
+                        var val = grid[r][c];
+                        if (
+                            typeof val !== "number" ||
+                            val < 0 ||
+                            val > 9 ||
+                            val !== Math.floor(val)
+                        ) {
+                            return (
+                                label +
+                                "[" +
+                                r +
+                                "][" +
+                                c +
+                                "] = " +
+                                JSON.stringify(val) +
+                                " (must be integer 0-9)."
+                            );
+                        }
+                    }
+                }
+                return null;
+            }
+
+            // Bind file inputs
+            $(document).on(
+                "change",
+                "#custom_file_input, #custom_file_input_modal",
+                function (e) {
+                    var file = e.target.files[0];
+                    validateAndLoadFile(file);
+                    e.target.value = "";
+                },
+            );
+
+            // ══════════════════════════════════════════════════════════
+            // ARC-AGI-2 Task Card Browser — render task cards with
+            // live canvas previews from my_tasks folder
+            // ══════════════════════════════════════════════════════════
+
+            var ARC_COLORS = [
+                "#111", // 0 - black
+                "#1e93ff", // 1 - blue
+                "#f93c31", // 2 - red
+                "#4fdc4a", // 3 - green
+                "#ffdc00", // 4 - yellow
+                "#999", // 5 - grey
+                "#e53aa3", // 6 - magenta
+                "#ff851b", // 7 - orange
+                "#87d8f1", // 8 - cyan
+                "#921231", // 9 - maroon
+            ];
+
+            // Draw a grid onto a canvas element
+            function drawGridOnCanvas(canvas, gridData, maxSize) {
+                var rows = gridData.length;
+                var cols = gridData[0].length;
+                var cellSize = Math.max(
+                    2,
+                    Math.floor(maxSize / Math.max(rows, cols)),
+                );
+                var w = cellSize * cols;
+                var h = cellSize * rows;
+                canvas.width = w;
+                canvas.height = h;
+                canvas.style.width = w + "px";
+                canvas.style.height = h + "px";
+                var ctx = canvas.getContext("2d");
+
+                // Background
+                ctx.fillStyle = "#111";
+                ctx.fillRect(0, 0, w, h);
+
+                // Cells
+                for (var r = 0; r < rows; r++) {
+                    for (var c = 0; c < cols; c++) {
+                        var val = gridData[r][c];
+                        ctx.fillStyle = ARC_COLORS[val] || "#111";
+                        ctx.fillRect(
+                            c * cellSize,
+                            r * cellSize,
+                            cellSize,
+                            cellSize,
+                        );
+                    }
+                }
+
+                // Grid lines
+                ctx.strokeStyle = "rgba(50,50,50,0.6)";
+                ctx.lineWidth = 1;
+                for (var r = 0; r <= rows; r++) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, r * cellSize + 0.5);
+                    ctx.lineTo(w, r * cellSize + 0.5);
+                    ctx.stroke();
+                }
+                for (var c = 0; c <= cols; c++) {
+                    ctx.beginPath();
+                    ctx.moveTo(c * cellSize + 0.5, 0);
+                    ctx.lineTo(c * cellSize + 0.5, h);
+                    ctx.stroke();
+                }
+            }
+
+            // Render a preview_pair element with input->output canvases
+            function renderPreviewPair(
+                container,
+                inputGrid,
+                outputGrid,
+                maxCanvasSize,
+                isTest,
+            ) {
+                container.innerHTML = "";
+
+                // Input
+                var inputWrap = document.createElement("div");
+                inputWrap.className = "preview_grid_wrap";
+                var inputLabel = document.createElement("div");
+                inputLabel.className = "preview_grid_label";
+                inputLabel.textContent = "Input";
+                var inputCanvas = document.createElement("canvas");
+                inputCanvas.className = "preview_canvas";
+                drawGridOnCanvas(inputCanvas, inputGrid, maxCanvasSize);
+                inputWrap.appendChild(inputLabel);
+                inputWrap.appendChild(inputCanvas);
+
+                // Arrow
+                var arrow = document.createElement("div");
+                arrow.className = "preview_arrow";
+                arrow.textContent = "\u2192";
+
+                // Output
+                var outputWrap = document.createElement("div");
+                outputWrap.className = "preview_grid_wrap";
+                var outputLabel = document.createElement("div");
+                outputLabel.className = "preview_grid_label";
+                outputLabel.textContent = "Output";
+
+                if (isTest) {
+                    // Placeholder with thinking emoji
+                    var placeholder = document.createElement("div");
+                    placeholder.className = "preview_test_output_placeholder";
+                    var iRows = inputGrid.length;
+                    var iCols = inputGrid[0].length;
+                    var cSize = Math.max(
+                        2,
+                        Math.floor(maxCanvasSize / Math.max(iRows, iCols)),
+                    );
+                    var pH = cSize * iRows;
+                    var pW = cSize * iCols;
+                    placeholder.style.width = pW + "px";
+                    placeholder.style.height = pH + "px";
+                    placeholder.innerHTML = "&#129300;";
+                    outputWrap.appendChild(outputLabel);
+                    outputWrap.appendChild(placeholder);
+                } else {
+                    var outputCanvas = document.createElement("canvas");
+                    outputCanvas.className = "preview_canvas";
+                    drawGridOnCanvas(outputCanvas, outputGrid, maxCanvasSize);
+                    outputWrap.appendChild(outputLabel);
+                    outputWrap.appendChild(outputCanvas);
+                }
+
+                container.appendChild(inputWrap);
+                container.appendChild(arrow);
+                container.appendChild(outputWrap);
+            }
+
+            // Get a description based on grid analysis
+            function getTaskDescription(taskData) {
+                var train = taskData.train;
+                var test = taskData.test;
+                var t0Input = train[0].input;
+                var t0Output = train[0].output;
+                var inH = t0Input.length;
+                var inW = t0Input[0].length;
+                var outH = t0Output.length;
+                var outW = t0Output[0].length;
+
+                // Count unique colors
+                var colorSet = {};
+                for (var r = 0; r < inH; r++) {
+                    for (var c = 0; c < inW; c++) {
+                        if (t0Input[r][c] !== 0) colorSet[t0Input[r][c]] = true;
+                    }
+                }
+                var numColors = Object.keys(colorSet).length;
+
+                var sizeChange = "";
+                if (outH === inH && outW === inW) {
+                    sizeChange = "Same-size transformation.";
+                } else if (outH > inH || outW > inW) {
+                    sizeChange =
+                        "Grid expands from " +
+                        inH +
+                        "×" +
+                        inW +
+                        " to " +
+                        outH +
+                        "×" +
+                        outW +
+                        ".";
+                } else {
+                    sizeChange =
+                        "Grid contracts from " +
+                        inH +
+                        "×" +
+                        inW +
+                        " to " +
+                        outH +
+                        "×" +
+                        outW +
+                        ".";
+                }
+
+                return (
+                    "Task with " +
+                    numColors +
+                    " color" +
+                    (numColors !== 1 ? "s" : "") +
+                    " and " +
+                    train.length +
+                    " training example" +
+                    (train.length !== 1 ? "s" : "") +
+                    ". " +
+                    sizeChange
+                );
+            }
+
+            // Build a task card element
+            function buildTaskCard(filename, taskData, index) {
+                var card = document.createElement("div");
+                card.className = "task_card";
+                card.setAttribute("data-file", filename);
+
+                var taskId = filename.replace(".json", "");
+                var train = taskData.train;
+                var test = taskData.test;
+                var desc = getTaskDescription(taskData);
+
+                var inGrid = train[0].input;
+                var outGrid = train[0].output;
+
+                // Metadata
+                var inDims = inGrid.length + "×" + inGrid[0].length;
+                var outDims = outGrid.length + "×" + outGrid[0].length;
+
+                // Info side
+                var info = document.createElement("div");
+                info.className = "task_card_info";
+                info.innerHTML =
+                    '<div class="task_card_label">Task ' +
+                    (index + 1) +
+                    "</div>" +
+                    '<div class="task_card_id">' +
+                    taskId +
+                    "</div>" +
+                    '<div class="task_card_desc">' +
+                    desc +
+                    "</div>" +
+                    '<div class="task_card_meta">' +
+                    '<span><span class="meta_dot" style="background:#1e93ff"></span> ' +
+                    train.length +
+                    " train</span>" +
+                    '<span><span class="meta_dot" style="background:#f93c31"></span> ' +
+                    test.length +
+                    " test</span>" +
+                    "<span>" +
+                    inDims +
+                    " → " +
+                    outDims +
+                    "</span>" +
+                    "</div>";
+
+                var btn = document.createElement("button");
+                btn.className = "task_card_btn";
+                btn.textContent = "TRY THIS TASK";
+                btn.setAttribute("data-file", filename);
+                btn.addEventListener("click", function () {
+                    var fn = this.getAttribute("data-file");
+                    loadTaskFromBrowser(fn, taskData);
+                });
+                info.appendChild(btn);
+
+                // Preview side
+                var preview = document.createElement("div");
+                preview.className = "task_card_preview";
+
+                // Compute canvas size based on available space
+                var maxCanvas =
+                    window.innerWidth < 520
+                        ? 100
+                        : window.innerWidth < 800
+                          ? 140
+                          : 160;
+
+                // Show first training pair
+                var trainPair = document.createElement("div");
+                trainPair.className = "preview_pair";
+                renderPreviewPair(trainPair, inGrid, outGrid, maxCanvas, false);
+                preview.appendChild(trainPair);
+
+                // Show first test pair (input only, output = placeholder)
+                if (test.length > 0) {
+                    var testPair = document.createElement("div");
+                    testPair.className = "preview_pair";
+                    renderPreviewPair(
+                        testPair,
+                        test[0].input,
+                        null,
+                        maxCanvas,
+                        true,
+                    );
+                    preview.appendChild(testPair);
+                }
+
+                card.appendChild(info);
+                card.appendChild(preview);
+
+                return card;
+            }
+
+            // Load a task from browser card click
+            function loadTaskFromBrowser(filename, taskData) {
+                var train = taskData.train;
+                var test = taskData.test;
+                loadJSONTask(train, test);
+                var allFiles = TASK_INDEX["my_tasks"] || [];
+                var idx = allFiles.indexOf(filename);
+                display_task_name(
+                    filename,
+                    idx >= 0 ? idx : null,
+                    allFiles.length,
+                );
+            }
+
+            // Master function: load all my_tasks and render cards
+            function renderTaskCards() {
+                var container = document.getElementById("task_cards_container");
+                var loading = document.getElementById("cards_loading");
+                var files =
+                    TASK_INDEX && TASK_INDEX["my_tasks"]
+                        ? TASK_INDEX["my_tasks"]
+                        : [];
+
+                if (files.length === 0) {
+                    if (loading)
+                        loading.innerHTML =
+                            "<span>No tasks found in my_tasks folder.</span>";
+                    return;
+                }
+
+                var loaded = 0;
+                var cards = new Array(files.length);
+
+                files.forEach(function (filename, index) {
+                    var url = "../data/my_tasks/" + filename;
+
+                    // Try $.getJSON first, then fetch
+                    $.getJSON(url, function (json) {
+                        cards[index] = buildTaskCard(filename, json, index);
+                        loaded++;
+                        if (loaded === files.length) {
+                            insertCards(container, cards, loading);
+                        }
+                    }).fail(function () {
+                        // Try fetch as fallback
+                        if (typeof fetch === "function") {
+                            fetch(url)
+                                .then(function (r) {
+                                    return r.json();
+                                })
+                                .then(function (json) {
+                                    cards[index] = buildTaskCard(
+                                        filename,
+                                        json,
+                                        index,
+                                    );
+                                })
+                                .catch(function () {
+                                    cards[index] = buildErrorCard(
+                                        filename,
+                                        index,
+                                    );
+                                })
+                                .finally(function () {
+                                    loaded++;
+                                    if (loaded === files.length) {
+                                        insertCards(container, cards, loading);
+                                    }
+                                });
+                        } else {
+                            cards[index] = buildErrorCard(filename, index);
+                            loaded++;
+                            if (loaded === files.length) {
+                                insertCards(container, cards, loading);
+                            }
+                        }
+                    });
+                });
+            }
+
+            function buildErrorCard(filename, index) {
+                var card = document.createElement("div");
+                card.className = "task_card";
+                var taskId = filename.replace(".json", "");
+                card.innerHTML =
+                    '<div class="task_card_info" style="grid-column:1/-1">' +
+                    '<div class="task_card_label">Task ' +
+                    (index + 1) +
+                    "</div>" +
+                    '<div class="task_card_id">' +
+                    taskId +
+                    "</div>" +
+                    '<div class="task_card_desc" style="color:#f93c31">' +
+                    "Could not load task. Please serve via a local server: " +
+                    '<code style="color:#ff851b">python3 -m http.server</code>' +
+                    "</div>" +
+                    "</div>";
+                return card;
+            }
+
+            function insertCards(container, cards, loading) {
+                if (loading) loading.remove();
+                for (var i = 0; i < cards.length; i++) {
+                    if (cards[i]) {
+                        container.appendChild(cards[i]);
+                    }
+                }
+            }
+
+            // Override the existing functions to work with my_tasks only
+            var _origOpenTaskBrowser = openTaskBrowser;
+            openTaskBrowser = function () {
+                $("#modal_bg").show();
+                // Re-render canvases on reopen in case window was resized
+                var container = document.getElementById("task_cards_container");
+                var existingCards = container.querySelectorAll(".task_card");
+                if (existingCards.length === 0) {
+                    renderTaskCards();
+                }
+            };
+
+            // Render cards once the task index is loaded
+            var _origLoadTaskIndex = loadTaskIndex;
+            loadTaskIndex = function () {
+                _origLoadTaskIndex();
+                // After index loads, render the cards
+                if (TASK_INDEX_LOADED) {
+                    renderTaskCards();
+                } else {
+                    // Wait for it
+                    var checkInterval = setInterval(function () {
+                        if (TASK_INDEX_LOADED) {
+                            clearInterval(checkInterval);
+                            renderTaskCards();
+                        }
+                    }, 100);
+                }
+            };
+
+            // Close modal on ESC if a task is loaded
+            $(document).on("keydown", function (e) {
+                if (
+                    (e.key === "Escape" || e.keyCode === 27) &&
+                    TRAIN_PAIRS &&
+                    TRAIN_PAIRS.length > 0
+                ) {
+                    $("#modal_bg").hide();
+                }
+            });
+
+            // Click outside cards area to close (only if task loaded)
+            $("#modal_bg").on("click", function (e) {
+                if (
+                    TRAIN_PAIRS &&
+                    TRAIN_PAIRS.length > 0 &&
+                    e.target === this
+                ) {
+                    $("#modal_bg").hide();
+                }
+            });
+        </script>
+    </body>
+</html>
