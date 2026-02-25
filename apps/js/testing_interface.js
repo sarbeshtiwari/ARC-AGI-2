@@ -158,15 +158,16 @@ function refreshEditionGrid(jqGrid, dataGrid, targetHeight) {
     jqGrid.css("display", "inline-block");
     $("#output_grid").css("display", "inline-block");
   } else if (targetHeight && targetHeight > 0) {
-    // Keep cells SQUARE. Pick the cell size from the smaller of the
-    // height and width constraints so the grid never overflows.
-    // The grid is then centered inside a container that matches the
-    // input grid's full height — no scrollbar, no distortion.
+    // SIZE BY HEIGHT FIRST (same approach as examples) so the output
+    // grid fills the full height. Only cap by width if the resulting
+    // grid would actually overflow the container — no scrollbar.
     //
-    // Step 1: Cell size from height.
-    var cellFromHeight = Math.floor((targetHeight - 1) / dataGrid.height);
+    // Step 1: Determine cell size purely from height.
+    var cellSize = Math.floor((targetHeight - 1) / dataGrid.height);
+    cellSize = Math.max(2, cellSize);
 
-    // Step 2: Cell size from available width.
+    // Step 2: Check if this would overflow the available width.
+    // If so, cap cell size to fit width. Otherwise keep height-based size.
     var outputWrapperEl = document.getElementById("test_output_wrapper");
     var availableWidth = outputWrapperEl ? outputWrapperEl.clientWidth : 0;
     if (availableWidth <= 0) {
@@ -178,22 +179,21 @@ function refreshEditionGrid(jqGrid, dataGrid, targetHeight) {
       var arrowW = arrowEl ? arrowEl.offsetWidth : 30;
       availableWidth = Math.max(20, Math.floor((containerW - arrowW - 20) / 2));
     }
-    var cellFromWidth = Math.floor((availableWidth - 1) / dataGrid.width);
+    var gridPixelWidth = cellSize * dataGrid.width + 1;
+    if (gridPixelWidth > availableWidth) {
+      // Only cap when it would actually overflow
+      var cellFromWidth = Math.floor((availableWidth - 1) / dataGrid.width);
+      cellSize = Math.max(2, cellFromWidth);
+    }
 
-    // Step 3: Use the SMALLER of the two — cells stay square, grid fits.
-    var cellSize = Math.min(cellFromHeight, cellFromWidth);
-    cellSize = Math.max(2, cellSize);
     applyCellSize(jqGrid, dataGrid.height, dataGrid.width, cellSize);
 
-    // Step 4: Force #output_grid container to match input height exactly.
-    // Center the grid vertically inside if it's shorter than targetHeight.
+    // Step 3: Force .edition_grid AND #output_grid heights to match input.
+    jqGrid.css("height", targetHeight + "px");
     $("#output_grid").css({
       height: targetHeight + "px",
       "overflow-x": "hidden",
       "overflow-y": "hidden",
-      display: "flex",
-      "align-items": "center",
-      "justify-content": "center",
     });
   } else {
     fitCellsToFixedContainer(
@@ -539,76 +539,42 @@ function syncTestGridHeight() {
     }
   } else {
     // ── Side-by-side (row) layout for larger screens ───────
-    // Set #test_grids_container to match the first example pair height
-    $("#test_grids_container").css("height", pairHeight + "px");
-
-    // Phase 3: Measure actual container widths using clientWidth
-    var containerEl = document.getElementById("test_grids_container");
-    var containerContentWidth = containerEl ? containerEl.clientWidth : 0;
-
-    var arrowEl = document.getElementById("test_arrow");
-    var arrowWidth = arrowEl ? arrowEl.offsetWidth : 30;
+    // Size grids by their WRAPPER WIDTH (like examples do) so they
+    // fill the available horizontal space naturally. No forced
+    // container height — the container grows to fit the grids.
+    $("#test_grids_container").css("height", "auto");
 
     var inputWrapperEl = document.getElementById("test_input_wrapper");
     var outputWrapperEl = document.getElementById("test_output_wrapper");
     var inputWrapperWidth = inputWrapperEl ? inputWrapperEl.clientWidth : 0;
     var outputWrapperWidth = outputWrapperEl ? outputWrapperEl.clientWidth : 0;
 
-    // Calculate max grid width from container
-    var gridSize;
-    if (containerContentWidth > 0) {
-      var availableForGrids = containerContentWidth - arrowWidth - 8;
-      var halfSpace = Math.max(20, Math.floor(availableForGrids / 2));
-
-      if (inputWrapperWidth > 0 && outputWrapperWidth > 0) {
-        gridSize = Math.min(
-          halfSpace,
-          Math.min(inputWrapperWidth, outputWrapperWidth),
-        );
-      } else {
-        gridSize = halfSpace;
-      }
-    } else if (inputWrapperWidth > 0 && outputWrapperWidth > 0) {
-      gridSize = Math.min(inputWrapperWidth, outputWrapperWidth);
-    } else {
-      var vw = getContainerWidth(document.documentElement) || window.innerWidth;
-      gridSize = Math.max(20, Math.floor((vw * 0.47 - arrowWidth - 30) / 2));
+    // Fallback if wrappers aren't measured yet
+    if (inputWrapperWidth <= 0 || outputWrapperWidth <= 0) {
+      var containerEl = document.getElementById("test_grids_container");
+      var containerW = containerEl
+        ? containerEl.clientWidth
+        : window.innerWidth;
+      var arrowEl = document.getElementById("test_arrow");
+      var arrowW = arrowEl ? arrowEl.offsetWidth : 30;
+      var half = Math.max(20, Math.floor((containerW - arrowW - 20) / 2));
+      if (inputWrapperWidth <= 0) inputWrapperWidth = half;
+      if (outputWrapperWidth <= 0) outputWrapperWidth = half;
     }
 
-    // Clamp: grid slot can never be bigger than half the container
-    if (containerContentWidth > 0) {
-      var maxSlot = Math.floor((containerContentWidth - arrowWidth) / 2);
-      gridSize = Math.min(gridSize, maxSlot);
-    }
-
-    // CRITICAL: Also constrain by available HEIGHT so grids don't overflow
-    // vertically. Available height = container height - label - padding.
-    var labelEl = document.querySelector("#test_input_wrapper .grid_label");
-    var labelHeight = labelEl ? labelEl.offsetHeight + 6 : 24; // 6px margin-bottom
-    var containerPadding = 20; // 10px top + 10px bottom
-    var maxGridHeight = Math.max(
-      20,
-      pairHeight - labelHeight - containerPadding,
-    );
-    gridSize = Math.min(gridSize, maxGridHeight);
-
-    gridSize = Math.max(20, gridSize);
-    TEST_GRID_FIXED_SIZE = gridSize;
-
-    // 1. Render test input grid first (constrained by both width & height).
+    // 1. Size test INPUT grid to fill its wrapper width (like examples).
+    var inputGridSize = Math.max(20, inputWrapperWidth);
+    TEST_GRID_FIXED_SIZE = inputGridSize;
     if (CURRENT_INPUT_GRID && CURRENT_INPUT_GRID.height > 0) {
       fillTestInput(CURRENT_INPUT_GRID);
     }
 
-    // 2. Read the input wrapper's actual rendered height (label + grid).
-    var inputWrapperHeight = $("#test_input_wrapper").outerHeight();
-
-    // 3. Render test output grid — height MUST match input grid height exactly.
-    //    Whether the output is 3x3 or 30x30, it fills the same vertical space
-    //    as the input grid (cells scale accordingly).
+    // 2. Read the actual rendered input grid height.
     var inputGridPixelHeight = $("#evaluation_input").outerHeight();
+
+    // 3. Size test OUTPUT grid: match input grid height, cap by width.
     var outputTargetHeight =
-      inputGridPixelHeight > 0 ? inputGridPixelHeight : maxGridHeight;
+      inputGridPixelHeight > 0 ? inputGridPixelHeight : inputGridSize;
     if (CURRENT_OUTPUT_GRID && CURRENT_OUTPUT_GRID.height > 0) {
       refreshEditionGrid(
         jqEditionGrid,
@@ -617,7 +583,8 @@ function syncTestGridHeight() {
       );
     }
 
-    // 4. Force output wrapper height to match input wrapper height exactly.
+    // 4. Force output wrapper height to match input wrapper height.
+    var inputWrapperHeight = $("#test_input_wrapper").outerHeight();
     if (inputWrapperHeight && inputWrapperHeight > 0) {
       $("#test_output_wrapper").css("height", inputWrapperHeight + "px");
     }
