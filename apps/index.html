@@ -12,6 +12,7 @@
         <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
         <script src="js/common.js"></script>
         <script src="js/task_index_data.js"></script>
+        <script src="js/my_tasks_data.js"></script>
         <script src="js/testing_interface.js"></script>
 
         <link rel="stylesheet" type="text/css" href="css/common.css" />
@@ -1325,6 +1326,7 @@
             // ══════════════════════════════════════════════════════════
             // ARC-AGI-2 Task Card Browser — render task cards with
             // live canvas previews from my_tasks folder
+            // Uses embedded MY_TASKS_DATA when available (file:// safe)
             // ══════════════════════════════════════════════════════════
 
             var ARC_COLORS = [
@@ -1611,8 +1613,26 @@
 
             // Load a task from browser card click
             function loadTaskFromBrowser(filename, taskData) {
-                var train = taskData.train;
-                var test = taskData.test;
+                var train, test;
+                // If taskData was passed directly, use it
+                if (taskData && taskData.train && taskData.test) {
+                    train = taskData.train;
+                    test = taskData.test;
+                }
+                // Otherwise try embedded data
+                else if (
+                    typeof MY_TASKS_DATA !== "undefined" &&
+                    MY_TASKS_DATA[filename]
+                ) {
+                    train = MY_TASKS_DATA[filename].train;
+                    test = MY_TASKS_DATA[filename].test;
+                }
+
+                if (!train || !test) {
+                    errorMsg("Could not load task data for " + filename);
+                    return;
+                }
+
                 loadJSONTask(train, test);
                 var allFiles = TASK_INDEX["my_tasks"] || [];
                 var idx = allFiles.indexOf(filename);
@@ -1639,13 +1659,29 @@
                     return;
                 }
 
+                // If embedded data is available, use it directly (works with file://)
+                if (typeof MY_TASKS_DATA !== "undefined") {
+                    var cards = [];
+                    for (var i = 0; i < files.length; i++) {
+                        var filename = files[i];
+                        var json = MY_TASKS_DATA[filename];
+                        if (json) {
+                            cards.push(buildTaskCard(filename, json, i));
+                        } else {
+                            cards.push(buildErrorCard(filename, i));
+                        }
+                    }
+                    insertCards(container, cards, loading);
+                    return;
+                }
+
+                // Fallback: fetch via AJAX (requires a server)
                 var loaded = 0;
                 var cards = new Array(files.length);
 
                 files.forEach(function (filename, index) {
                     var url = "../data/my_tasks/" + filename;
 
-                    // Try $.getJSON first, then fetch
                     $.getJSON(url, function (json) {
                         cards[index] = buildTaskCard(filename, json, index);
                         loaded++;
@@ -1653,7 +1689,6 @@
                             insertCards(container, cards, loading);
                         }
                     }).fail(function () {
-                        // Try fetch as fallback
                         if (typeof fetch === "function") {
                             fetch(url)
                                 .then(function (r) {

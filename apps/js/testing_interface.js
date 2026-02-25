@@ -77,9 +77,19 @@ function handleTaskJSON(json, folder, filename) {
 }
 
 function loadTaskByPath(folder, filename) {
+  // Try embedded MY_TASKS_DATA first (works with file:// protocol)
+  if (
+    folder === "my_tasks" &&
+    typeof MY_TASKS_DATA !== "undefined" &&
+    MY_TASKS_DATA[filename]
+  ) {
+    handleTaskJSON(MY_TASKS_DATA[filename], folder, filename);
+    return;
+  }
+
   var url = "../data/" + folder + "/" + filename;
 
-  // Try $.getJSON first (works on local servers)
+  // Try $.getJSON (works on local servers)
   $.getJSON(url, function (json) {
     handleTaskJSON(json, folder, filename);
   }).fail(function () {
