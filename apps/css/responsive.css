@@ -11,7 +11,9 @@
 /* ── Base responsive fixes (all sizes) ────────────────────── */
 
 body {
-    min-width: 0;
+    min-width: 1200px;
+    max-width: 1800px;
+    margin: 0 auto;
     overflow-x: hidden;
     overflow-y: auto;
     -webkit-text-size-adjust: 100%;
@@ -32,7 +34,7 @@ body {
 }
 
 #workspace {
-    max-width: 100%;
+    max-width: 1600px;
     box-sizing: border-box;
 }
 
@@ -102,13 +104,10 @@ body {
     #test_panel {
         flex: 0 0 52%;
         max-width: 52%;
-        overflow: visible;
+        overflow: hidden;
     }
-    /* The container itself handles horizontal scroll — not the panel */
     #test_grids_container {
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
+        overflow: hidden;
         padding: 10px 14px;
         max-width: 100%;
         box-sizing: border-box;
@@ -117,17 +116,17 @@ body {
     #test_output_wrapper {
         flex-shrink: 1;
         min-width: 0;
-        overflow: visible;
+        overflow: hidden;
     }
-    /* Labels must never be clipped — allow them to show fully */
     .grid_label {
-        overflow: visible;
+        overflow: hidden;
         white-space: nowrap;
+        text-overflow: ellipsis;
         flex-shrink: 0;
     }
     #evaluation_input,
     #output_grid {
-        overflow: visible;
+        overflow: hidden;
         max-width: 100%;
     }
 }
@@ -145,7 +144,7 @@ body {
     #test_panel {
         flex: 0 0 55%;
         max-width: 55%;
-        overflow: visible;
+        overflow: hidden;
     }
     .pair_arrow {
         padding: 0 6px;
@@ -158,11 +157,8 @@ body {
     #top_bar {
         padding: 8px 16px;
     }
-    /* The container itself handles horizontal scroll — not the panel */
     #test_grids_container {
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
+        overflow: hidden;
         padding: 10px 14px;
         max-width: 100%;
         box-sizing: border-box;
@@ -171,16 +167,17 @@ body {
     #test_output_wrapper {
         flex-shrink: 1;
         min-width: 0;
-        overflow: visible;
+        overflow: hidden;
     }
     .grid_label {
-        overflow: visible;
+        overflow: hidden;
         white-space: nowrap;
+        text-overflow: ellipsis;
         flex-shrink: 0;
     }
     #evaluation_input,
     #output_grid {
-        overflow: visible;
+        overflow: hidden;
         max-width: 100%;
     }
 }
@@ -194,13 +191,14 @@ body {
 @media (max-width: 1000px) {
     #workspace {
         flex-direction: column;
+        overflow: hidden;
     }
     #examples_panel,
     #test_panel {
         flex: none;
         max-width: 100%;
         width: 100%;
-        overflow: visible;
+        overflow: hidden;
     }
     #examples_panel {
         border-bottom: 1px solid #333;
@@ -208,30 +206,46 @@ body {
     #task_preview {
         padding-left: 10px;
         padding-right: 10px;
+        overflow: hidden;
     }
+    /* Test grids container: overflow hidden to contain grids.
+       The JS sets height:auto for stacked layout via isStackedLayout()
+       and sizes grids to fit within the measured container width. */
     #test_grids_container {
         padding: 10px 10px;
-        overflow-x: auto;
-        overflow-y: visible;
-        -webkit-overflow-scrolling: touch;
+        overflow: hidden;
         max-width: 100%;
         box-sizing: border-box;
+        height: auto;
     }
     #test_input_wrapper,
     #test_output_wrapper {
+        flex: 1 1 0;
         flex-shrink: 1;
         min-width: 0;
-        overflow: visible;
+        overflow: hidden;
+        height: auto;
     }
     .grid_label {
-        overflow: visible;
+        overflow: hidden;
         white-space: nowrap;
+        text-overflow: ellipsis;
         flex-shrink: 0;
     }
     #evaluation_input,
     #output_grid {
-        overflow: visible;
+        overflow: hidden;
         max-width: 100%;
+    }
+    #output_grid .edition_grid {
+        overflow: hidden;
+        max-width: 100%;
+    }
+    .pair_preview {
+        overflow: hidden;
+    }
+    .pair_grids_row {
+        overflow: hidden;
     }
     .pair_arrow {
         padding: 0 10px;

@@ -68,6 +68,126 @@ function convertSerializedGridToGridObject(values) {
   return new Grid(height, width, values);
 }
 
+// ═══════════════════════════════════════════════════════════
+// Utility: Accurate container width measurement
+// Uses element.clientWidth (DOM API) which is always accurate
+// regardless of browser zoom level, unlike jQuery .width()
+// which can return stale values at non-100% zoom.
+// ═══════════════════════════════════════════════════════════
+
+function getContainerWidth(container) {
+  var el;
+  if (typeof container === "string") {
+    el = document.querySelector(container);
+  } else if (container instanceof jQuery || (container && container.jquery)) {
+    el = container[0];
+  } else {
+    el = container;
+  }
+  if (!el) return 0;
+  return el.clientWidth;
+}
+
+// ═══════════════════════════════════════════════════════════
+// Utility: Calculate optimal cell size for a grid
+// ═══════════════════════════════════════════════════════════
+
+function computeCellSize(gridHeight, gridWidth, maxSize) {
+  var available = Math.max(1, maxSize - 1);
+  var cellH = Math.floor(available / gridHeight);
+  var cellW = Math.floor(available / gridWidth);
+  var cellSize = Math.min(cellH, cellW);
+  cellSize = Math.max(2, cellSize);
+  cellSize = Math.min(MAX_CELL_SIZE, cellSize);
+  return cellSize;
+}
+
+// ═══════════════════════════════════════════════════════════
+// Utility: Apply cell size to a grid atomically
+// Sets width, height, AND line-height on every cell.
+// ═══════════════════════════════════════════════════════════
+
+function applyCellSize(jqGrid, gridHeight, gridWidth, cellSize) {
+  var px = cellSize + "px";
+  jqGrid.find(".cell").css({
+    width: px,
+    height: px,
+    "line-height": px,
+  });
+  var gridPixelWidth = cellSize * gridWidth + 1;
+  var gridPixelHeight = cellSize * gridHeight + 1;
+  jqGrid.css({
+    width: gridPixelWidth + "px",
+    height: gridPixelHeight + "px",
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// Utility: Reset grid dimensions for reflow measurement
+// ═══════════════════════════════════════════════════════════
+
+function resetGridDimensions(jqGrid) {
+  // Only clear max-width; preserve width/height so page doesn't collapse.
+  // The sizing functions will overwrite width/height anyway.
+  jqGrid.css({ "max-width": "" });
+}
+
+// ═══════════════════════════════════════════════════════════
+// Deferred full resize — runs resize at 0ms, 50ms, 200ms
+// to catch all browser layout timing after zoom changes.
+// ═══════════════════════════════════════════════════════════
+
+var _deferredResizeTimers = [];
+var _lastKnownZoom = null;
+
+function deferredFullResize() {
+  for (var i = 0; i < _deferredResizeTimers.length; i++) {
+    clearTimeout(_deferredResizeTimers[i]);
+  }
+  _deferredResizeTimers = [];
+
+  function doResize() {
+    // Save scroll position before any DOM changes
+    var scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+    var scrollY = window.pageYOffset || document.documentElement.scrollTop;
+
+    if (typeof resizeAllExampleGrids === "function") {
+      resizeAllExampleGrids();
+    }
+    if (typeof syncTestGridHeight === "function") {
+      syncTestGridHeight();
+    }
+
+    // Restore scroll position after sizing is done
+    window.scrollTo(scrollX, scrollY);
+  }
+
+  // Detect if zoom actually changed (devicePixelRatio shifts on zoom)
+  var currentZoom = window.devicePixelRatio || 1;
+  var isZoomChange = _lastKnownZoom !== null && _lastKnownZoom !== currentZoom;
+  _lastKnownZoom = currentZoom;
+
+  if (isZoomChange) {
+    // Zoom changed: run multiple passes to catch async layout timing
+    var delays = [0, 50, 200];
+    for (var i = 0; i < delays.length; i++) {
+      (function (delay) {
+        var timer = setTimeout(function () {
+          doResize();
+        }, delay);
+        _deferredResizeTimers.push(timer);
+      })(delays[i]);
+    }
+  } else {
+    // Normal resize (window drag, orientation change): single pass is enough
+    doResize();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Grid sizing functions
+// ═══════════════════════════════════════════════════════════
+
 function fitCellsToContainer(
   jqGrid,
   height,
@@ -79,43 +199,28 @@ function fitCellsToContainer(
   candidate_width = Math.floor((containerWidth - width) / width);
   size = Math.min(candidate_height, candidate_width);
   size = Math.min(MAX_CELL_SIZE, size);
-  jqGrid.find(".cell").css("height", size + "px");
-  jqGrid.find(".cell").css("width", size + "px");
+  applyCellSize(jqGrid, height, width, size);
 }
 
 function fitCellsToFixedContainer(jqGrid, height, width, fixedSize) {
-  // Scale cells so the grid fits within fixedSize x fixedSize pixels.
-  // Account for 1px grid border (top/left) on the container.
-  var availableHeight = fixedSize - 1;
-  var availableWidth = fixedSize - 1;
-  var cellH = Math.floor(availableHeight / height);
-  var cellW = Math.floor(availableWidth / width);
-  var cellSize = Math.max(2, Math.min(cellH, cellW));
-  jqGrid.find(".cell").css("height", cellSize + "px");
-  jqGrid.find(".cell").css("width", cellSize + "px");
-  // Always set the container to the exact tight-fit size (no grey overflow)
-  jqGrid.css("width", cellSize * width + 1 + "px");
-  jqGrid.css("height", cellSize * height + 1 + "px");
+  var cellSize = computeCellSize(height, width, fixedSize);
+  applyCellSize(jqGrid, height, width, cellSize);
+  // Safety clamp: grid must never exceed fixedSize
+  var actualWidth = cellSize * width + 1;
+  if (actualWidth > fixedSize) {
+    jqGrid.css("max-width", fixedSize + "px");
+  }
 }
 
 // Minimum cell size for small-screen scrollable grids.
 var SCROLLABLE_MIN_CELL = 8;
 
 function fitCellsToScrollableContainer(jqGrid, height, width, containerWidth) {
-  // Like fitCellsToFixedContainer but guarantees a minimum cell size
-  // of SCROLLABLE_MIN_CELL pixels.  When the resulting grid is wider
-  // than the container the CSS overflow-x:auto on the ancestor lets
-  // the user scroll horizontally.  This keeps grids VISIBLE on phones.
   var available = Math.max(20, containerWidth) - 1;
   var cellFromWidth = Math.floor(available / width);
-  // Never shrink below SCROLLABLE_MIN_CELL — let it overflow instead
   var cellSize = Math.max(SCROLLABLE_MIN_CELL, cellFromWidth);
   cellSize = Math.min(MAX_CELL_SIZE, cellSize);
-  jqGrid.find(".cell").css("height", cellSize + "px");
-  jqGrid.find(".cell").css("width", cellSize + "px");
-  // Tight-fit: the grid may be wider than the container — that is OK.
-  jqGrid.css("width", cellSize * width + 1 + "px");
-  jqGrid.css("height", cellSize * height + 1 + "px");
+  applyCellSize(jqGrid, height, width, cellSize);
 }
 
 function fillJqGridWithData(jqGrid, dataGrid) {

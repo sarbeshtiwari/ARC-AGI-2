@@ -4,16 +4,24 @@
 
 /* ── Base / Body ──────────────────────────────────────────── */
 
+html {
+    background-color: #000000;
+    height: 100%;
+}
+
 body {
     font-family: "Inter", "Open Sans", sans-serif;
     background-color: #000000;
     color: #e0e0e0;
-    margin: 0;
+    margin: 0 auto;
     padding: 0;
-    min-width: 320px;
-    overflow-x: auto;
+    width: 100%;
+    max-width: 1600px;
+    min-width: 1200px;
+    overflow-x: hidden;
     overflow-y: auto;
     height: auto;
+    min-height: 100vh;
 }
 
 /* ── Modal ────────────────────────────────────────────────── */
@@ -77,9 +85,10 @@ body {
     flex-direction: row;
     align-items: flex-start;
     width: 100%;
-    max-width: 95vw;
+    max-width: 1600px;
     margin: 0 auto;
     padding: 0;
+    box-sizing: border-box;
 }
 
 /* ── LEFT: Examples Panel ─────────────────────────────────── */
@@ -232,6 +241,7 @@ body {
     flex-direction: column;
     align-items: stretch;
     overflow: hidden;
+    box-sizing: border-box;
 }
 
 #test_output_wrapper {
@@ -241,6 +251,7 @@ body {
     flex-direction: column;
     align-items: stretch;
     overflow: hidden;
+    box-sizing: border-box;
 }
 
 .grid_label {
@@ -274,15 +285,25 @@ body {
 
 #evaluation_input {
     display: inline-block;
+    overflow: hidden;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 #output_grid {
-    display: inline-block;
+    display: block;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 #output_grid .edition_grid {
     border-top: 1px solid #444;
     border-left: 1px solid #444;
+    overflow: visible;
+    max-width: none;
+    box-sizing: border-box;
 }
 
 #output_grid .cell {
